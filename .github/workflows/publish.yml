@@ -70,7 +70,7 @@ jobs:
             docker buildx build \
               --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
               --target builder \
-              --output type=local,dest=./build/java/export ./java
+              --output type=local,dest=./build/java,include=/export ./java
       
             # Copy executable and parser
             cp ./build/java/export/esql-check ./dist/esql-check-java
@@ -82,7 +82,7 @@ jobs:
             docker buildx build \
               --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
               --target builder \
-              --output type=local,dest=./build/python/export ./python
+              --output type=local,dest=./build/python,include=/export ./python
       
             # Copy generated grammar only
             cp -r ./build/python/export/python-grammar ./dist/python-grammar
@@ -93,14 +93,13 @@ jobs:
             docker buildx build \
               --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
               --target builder \
-              --output type=local,dest=./build/go/export ./go
+              --output type=local,dest=./build/go,include=/export ./go
       
             # Copy executable and parser
             cp ./build/go/export/esql-check ./dist/esql-check-go
             cp -r ./build/go/export/go-grammar ./dist/go-grammar
             cd dist && zip -r parser-go.zip go-grammar && cd ..
           fi
-        
         
       - name: Upload artifacts to GitHub release
         uses: softprops/action-gh-release@v2
