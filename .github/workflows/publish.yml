@@ -62,45 +62,45 @@ jobs:
           echo "tag=$(echo '${{ steps.tags.outputs.tags }}' | cut -d',' -f1)" >> $GITHUB_OUTPUT
       
 
-          - name: Extract artifacts
-          run: |
-            if [ "${{ matrix.lang }}" = "java" ]; then
-              # Export only the java executable and generated parser
-              docker buildx build \
-                --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
-                --target builder \
-                --output type=local,dest=./build/java,include=workspace/esql-check,include=workspace/dev/bischoff/michael/elastic/esql/validator \
-                ./java
-  
-              mkdir -p dist
-              cp ./build/java/workspace/esql-check ./dist/esql-check-java
-              cp -r ./build/java/workspace/dev/bischoff/michael/elastic/esql/validator ./dist/java-grammar
-              cd dist && zip -r parser-java.zip java-grammar && cd ..
-  
-            elif [ "${{ matrix.lang }}" = "python" ]; then
-              # Python only needs the generated grammar
-              docker buildx build \
-                --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
-                --target builder \
-                --output type=local,dest=./build/python,include=workspace/python-generated-grammar \
-                ./python
-  
-              mkdir -p dist
-              cp -r ./build/python/workspace/python-generated-grammar ./dist/python-grammar
-              cd dist && zip -r parser-python.zip python-grammar && cd ..
-  
-            elif [ "${{ matrix.lang }}" = "go" ]; then
-              # Export only the Go executable and generated parser
-              docker buildx build \
-                --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
-                --target builder \
-                --output type=local,dest=./build/go,include=workspace/esql-check,include=workspace/app/parsing \
-                ./go
-  
-              mkdir -p dist
-              cp ./build/go/workspace/esql-check ./dist/esql-check-go
-              cp -r ./build/go/workspace/app/parsing ./dist/go-grammar
-              cd dist && zip -r parser-go.zip go-grammar && cd ..  
+      - name: Extract artifacts
+        run: |
+          if [ "${{ matrix.lang }}" = "java" ]; then
+            # Export only the java executable and generated parser
+            docker buildx build \
+              --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
+              --target builder \
+              --output type=local,dest=./build/java,include=workspace/esql-check,include=workspace/dev/bischoff/michael/elastic/esql/validator \
+              ./java
+
+            mkdir -p dist
+            cp ./build/java/workspace/esql-check ./dist/esql-check-java
+            cp -r ./build/java/workspace/dev/bischoff/michael/elastic/esql/validator ./dist/java-grammar
+            cd dist && zip -r parser-java.zip java-grammar && cd ..
+
+          elif [ "${{ matrix.lang }}" = "python" ]; then
+            # Python only needs the generated grammar
+            docker buildx build \
+              --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
+              --target builder \
+              --output type=local,dest=./build/python,include=workspace/python-generated-grammar \
+              ./python
+
+            mkdir -p dist
+            cp -r ./build/python/workspace/python-generated-grammar ./dist/python-grammar
+            cd dist && zip -r parser-python.zip python-grammar && cd ..
+
+          elif [ "${{ matrix.lang }}" = "go" ]; then
+            # Export only the Go executable and generated parser
+            docker buildx build \
+              --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
+              --target builder \
+              --output type=local,dest=./build/go,include=workspace/esql-check,include=workspace/app/parsing \
+              ./go
+
+            mkdir -p dist
+            cp ./build/go/workspace/esql-check ./dist/esql-check-go
+            cp -r ./build/go/workspace/app/parsing ./dist/go-grammar
+            cd dist && zip -r parser-go.zip go-grammar && cd ..  
   
       - name: Upload artifacts to GitHub release
         uses: softprops/action-gh-release@v2
