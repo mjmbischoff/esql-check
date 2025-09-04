@@ -79,11 +79,13 @@ RUN native-image \
   -cp "/workspace:/usr/local/lib/antlr.jar" \
   -H:Name=esql-check
 
-#========================
-# Export artifacts stage
-FROM scratch AS export
+# =========================
+# Export stage
+FROM builder AS export
+WORKDIR /export
+RUN mkdir -p /export/java-grammar
+COPY --from=builder /workspace/java-generated /export/java-grammar
 COPY --from=builder /workspace/esql-check /export/esql-check
-COPY --from=builder /workspace/dev/bischoff/michael/elastic/esql/validator /export/java-grammar
 
 #========================
 # Final image

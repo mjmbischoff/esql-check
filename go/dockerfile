@@ -112,9 +112,11 @@ EOF
 
 RUN go build -o /workspace/esql-check main.go
 
-#========================
-# Export artifacts stage
-FROM scratch AS export
+# =========================
+# Export stage
+FROM builder AS export
+WORKDIR /export
+RUN mkdir -p /export/go-grammar
 COPY --from=builder /workspace/esql-check /export/esql-check
 COPY --from=builder /workspace/app/parsing /export/go-grammar
 

@@ -56,7 +56,7 @@ jobs:
       - name: Prepare dist directory
         run: mkdir -p dist
 
-      - name: Extract artifacts from export stage
+      - name: Extract artifacts
         run: |
           mkdir -p dist
 
