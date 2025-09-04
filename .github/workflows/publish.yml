@@ -64,9 +64,15 @@ jobs:
       - name: Prepare artifacts directory
         run: mkdir -p dist
 
+      - name: Extract primary tag
+        id: primary_tag
+        run: |
+          echo "tag=$(echo '${{ steps.tags.outputs.tags }}' | cut -d',' -f1)" >> $GITHUB_OUTPUT
+      
+
       - name: Extract artifacts
         run: |
-          docker create --name tmp-${{ matrix.lang }} ${{ steps.meta.outputs.tags }}
+          docker create --name tmp-${{ matrix.lang }} ${{ steps.primary_tag.outputs.tag }}
           
           if [ "${{ matrix.lang }}" = "java" ]; then
             docker cp tmp-java:/workspace/esql-check ./dist/esql-check-java
