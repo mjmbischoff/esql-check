@@ -62,9 +62,10 @@ jobs:
 
           if [ "${{ matrix.lang }}" = "java" ]; then
             docker buildx build \
-              --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
-              --target export \
-              --output type=local,dest=./build/java ./java
+            --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
+            --target export \
+            --output type=local,dest=./build/java,include=/export/esql-check,include=/export/java-grammar \
+            ./java
 
             cp ./build/java/export/esql-check ./dist/esql-check-java
             cp -r ./build/java/export/java-grammar ./dist/java-grammar
