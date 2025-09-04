@@ -66,7 +66,7 @@ RUN mkdir -p /export && \
 
 #========================
 # Export artifacts stage
-FROM builder AS export
+FROM eclipse-temurin:24-alpine AS export
 WORKDIR /export
 RUN mkdir -p /export/python-grammar
 COPY --from=builder /workspace/python-generated-grammar /export/python-grammar

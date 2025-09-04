@@ -114,7 +114,7 @@ RUN go build -o /workspace/esql-check main.go
 
 # =========================
 # Export stage
-FROM builder AS export
+FROM eclipse-temurin:24-alpine AS export
 WORKDIR /export
 RUN mkdir -p /export/go-grammar
 COPY --from=builder /workspace/esql-check /export/esql-check
