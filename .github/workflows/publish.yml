@@ -39,8 +39,8 @@ jobs:
           images: mjmbischoff/esql-check
           tags: |
             type=raw,value=${{ matrix.lang }}-${{ env.ES_RELEASE_TAG }}
-            ${{ matrix.lang == 'java' && 'type=raw,value=${{ env.ES_RELEASE_TAG }}' || '' }}
-            ${{ matrix.lang == 'java' && 'type=raw,value=latest' || '' }}
+            ${{ (matrix.lang == 'java') && format('type=raw,value={0}', env.ES_RELEASE_TAG) }}
+            ${{ (matrix.lang == 'java') && 'type=raw,value=latest' }}
 
       - name: Build and push Docker image
         id: push
