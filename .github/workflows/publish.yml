@@ -101,7 +101,8 @@ jobs:
             cp ./build/go/workspace/esql-check ./dist/esql-check-go
             cp -r ./build/go/workspace/app/parsing ./dist/go-grammar
             cd dist && zip -r parser-go.zip go-grammar && cd ..  
-  
+          fi
+          
       - name: Upload artifacts to GitHub release
         uses: softprops/action-gh-release@v2
         with:
