@@ -112,15 +112,15 @@ EOF
 
 RUN go build -o /workspace/esql-check main.go
 
-# Prepare clean export directory
-RUN mkdir -p /export && \
-    cp /workspace/esql-check /export/esql-check && \
-    cp -r /workspace/app/parsing /export/go-grammar
+#========================
+# Export artifacts stage
+FROM scratch AS export
+COPY --from=builder /workspace/esql-check /export/esql-check
+COPY --from=builder /workspace/app/parsing /export/go-grammar
 
 #========================
-FROM alpine:3.20
-
+# Final image
+FROM alpine:3.20 AS final
 WORKDIR /app
 COPY --from=builder /workspace/esql-check /usr/local/bin/esql-check
-
 ENTRYPOINT ["esql-check"]

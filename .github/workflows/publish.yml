@@ -53,58 +53,45 @@ jobs:
             GIT_REF=${{ env.ES_RELEASE_TAG }}
           tags: ${{ steps.tags.outputs.tags }}
 
-      - name: Prepare artifacts directory
+      - name: Prepare dist directory
         run: mkdir -p dist
 
-      - name: Extract primary tag
-        id: primary_tag
-        run: |
-          echo "tag=$(echo '${{ steps.tags.outputs.tags }}' | cut -d',' -f1)" >> $GITHUB_OUTPUT
-      
-      - name: Extract artifacts
+      - name: Extract artifacts from export stage
         run: |
           mkdir -p dist
-      
+
           if [ "${{ matrix.lang }}" = "java" ]; then
-            # Build Java artifacts
             docker buildx build \
               --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
-              --target builder \
-              --output type=local,dest=./build/java,include=/export ./java
-      
-            # Copy executable and parser
-            cp ./build/java/export/esql-check ./dist/esql-check-java
-            cp -r ./build/java/export/java-grammar ./dist/java-grammar
+              --target export \
+              --output type=local,dest=./build/java ./java
+
+            cp ./build/java/esql-check ./dist/esql-check-java
+            cp -r ./build/java/java-grammar ./dist/java-grammar
             cd dist && zip -r parser-java.zip java-grammar && cd ..
-      
+
           elif [ "${{ matrix.lang }}" = "python" ]; then
-            # Build Python artifacts
             docker buildx build \
               --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
-              --target builder \
-              --output type=local,dest=./build/python,include=/export ./python
-      
-            # Copy generated grammar only
-            cp -r ./build/python/export/python-grammar ./dist/python-grammar
+              --target export \
+              --output type=local,dest=./build/python ./python
+
+            cp -r ./build/python/python-grammar ./dist/python-grammar
             cd dist && zip -r parser-python.zip python-grammar && cd ..
-      
+
           elif [ "${{ matrix.lang }}" = "go" ]; then
-            # Build Go artifacts
             docker buildx build \
               --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
-              --target builder \
-              --output type=local,dest=./build/go,include=/export ./go
-      
-            # Copy executable and parser
-            cp ./build/go/export/esql-check ./dist/esql-check-go
-            cp -r ./build/go/export/go-grammar ./dist/go-grammar
+              --target export \
+              --output type=local,dest=./build/go ./go
+
+            cp ./build/go/esql-check ./dist/esql-check-go
+            cp -r ./build/go/go-grammar ./dist/go-grammar
             cd dist && zip -r parser-go.zip go-grammar && cd ..
           fi
-        
+
       - name: Upload artifacts to GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
 
-        
-        

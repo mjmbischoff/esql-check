@@ -64,19 +64,16 @@ RUN cd /workspace/parser-g4-files && \
 RUN mkdir -p /export && \
     cp -r /workspace/python-generated-grammar /export/python-grammar
 
-# ====================    
-FROM python:3.11-alpine AS runtime
+#========================
+# Export artifacts stage
+FROM scratch AS export
+COPY --from=builder /workspace/python-generated-grammar /export/python-grammar
 
+#========================
+# Final image
+FROM python:3.11-alpine AS final
 WORKDIR /app
-
-# Copy generated ANTLR code
 COPY --from=builder /workspace/python-generated-grammar ./grammar
-RUN ls /app/*
-
-# Copy validation script
 COPY esql-check.py .
-
-# Install ANTLR Python runtime
 RUN pip install --no-cache-dir antlr4-python3-runtime==4.13.1
-
 ENTRYPOINT ["python3", "esql-check.py"]
