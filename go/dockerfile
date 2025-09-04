@@ -111,7 +111,12 @@ func main() {
 EOF
 
 RUN go build -o /workspace/esql-check main.go
-    
+
+# Prepare clean export directory
+RUN mkdir -p /export && \
+    cp /workspace/esql-check /export/esql-check && \
+    cp -r /workspace/app/parsing /export/go-grammar
+
 #========================
 FROM alpine:3.20
 

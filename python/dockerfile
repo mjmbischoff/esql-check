@@ -60,6 +60,10 @@ RUN cd /workspace/parser-g4-files && \
          -o /workspace/python-generated-grammar \
          -lib . EsqlBaseParser.g4
 
+# Prepare clean export directory
+RUN mkdir -p /export && \
+    cp -r /workspace/python-generated-grammar /export/python-grammar
+
 # ====================    
 FROM python:3.11-alpine AS runtime
 

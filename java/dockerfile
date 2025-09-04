@@ -79,6 +79,11 @@ RUN native-image \
   -cp "/workspace:/usr/local/lib/antlr.jar" \
   -H:Name=esql-check
 
+# Prepare clean export directory for artifacts
+RUN mkdir -p /export && \
+    cp /workspace/esql-check /export/esql-check && \
+    cp -r /workspace/dev/bischoff/michael/elastic/esql/validator /export/java-grammar
+
 #========================
 
 FROM scratch
