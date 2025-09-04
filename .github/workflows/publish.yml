@@ -66,8 +66,8 @@ jobs:
               --target export \
               --output type=local,dest=./build/java ./java
 
-            cp ./build/java/esql-check ./dist/esql-check-java
-            cp -r ./build/java/java-grammar ./dist/java-grammar
+            cp ./build/java/export/esql-check ./dist/esql-check-java
+            cp -r ./build/java/export/java-grammar ./dist/java-grammar
             cd dist && zip -r parser-java.zip java-grammar && cd ..
 
           elif [ "${{ matrix.lang }}" = "python" ]; then
@@ -76,7 +76,7 @@ jobs:
               --target export \
               --output type=local,dest=./build/python ./python
 
-            cp -r ./build/python/python-grammar ./dist/python-grammar
+            cp -r ./build/python/export/python-grammar ./dist/python-grammar
             cd dist && zip -r parser-python.zip python-grammar && cd ..
 
           elif [ "${{ matrix.lang }}" = "go" ]; then
@@ -85,8 +85,8 @@ jobs:
               --target export \
               --output type=local,dest=./build/go ./go
 
-            cp ./build/go/esql-check ./dist/esql-check-go
-            cp -r ./build/go/go-grammar ./dist/go-grammar
+            cp ./build/go/export/esql-check ./dist/esql-check-go
+            cp -r ./build/go/export/go-grammar ./dist/go-grammar
             cd dist && zip -r parser-go.zip go-grammar && cd ..
           fi
 
