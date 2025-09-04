@@ -1,0 +1,103 @@
+name: Publish Docker images and release artifacts
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-publish:
+    name: Build Docker Images & Release Artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+
+    strategy:
+      matrix:
+        lang: [java, python, go]
+
+    env:
+      # Take GitHub release tag (e.g., "9.1.2") and prepend "v" for Elasticsearch tag
+      ES_RELEASE_TAG: v${{ github.event.release.tag_name }}
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v5
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: mjmbischoff/esql-check
+          tags: |
+            type=raw,value=${{ matrix.lang }}-${{ env.ES_RELEASE_TAG }}
+            ${{ matrix.lang == 'java' && 'type=raw,value=${{ env.ES_RELEASE_TAG }}' || '' }}
+            ${{ matrix.lang == 'java' && 'type=raw,value=latest' || '' }}
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v3
+        with:
+          context: ./${{ matrix.lang }}
+          file: ./${{ matrix.lang }}/Dockerfile
+          push: true
+          build-args: |
+            GIT_REF=${{ env.ES_RELEASE_TAG }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Generate attestation
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: index.docker.io/my-docker-hub-namespace/my-docker-hub-repository
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Prepare artifacts directory
+        run: mkdir -p dist
+
+      - name: Extract artifacts
+        run: |
+          docker create --name tmp-${{ matrix.lang }} ${{ steps.meta.outputs.tags }}
+          
+          if [ "${{ matrix.lang }}" = "java" ]; then
+            docker cp tmp-java:/workspace/esql-check ./dist/esql-check-java
+            docker cp tmp-java:/workspace/dev/bischoff/michael/elastic/esql/validator ./dist/java-grammar
+            cd dist && zip -r parser-java.zip java-grammar && cd ..
+            echo "dist/esql-check-java" > files-to-upload.txt
+            echo "dist/parser-java.zip" >> files-to-upload.txt
+
+          elif [ "${{ matrix.lang }}" = "python" ]; then
+            docker cp tmp-python:/app/grammar ./dist/python-grammar
+            cd dist && zip -r parser-python.zip python-grammar && cd ..
+            echo "dist/parser-python.zip" > files-to-upload.txt
+
+          elif [ "${{ matrix.lang }}" = "go" ]; then
+            docker cp tmp-go:/usr/local/bin/esql-check ./dist/esql-check-go
+            docker cp tmp-go:/workspace/app/parsing ./dist/go-grammar
+            cd dist && zip -r parser-go.zip go-grammar && cd ..
+            echo "dist/esql-check-go" > files-to-upload.txt
+            echo "dist/parser-go.zip" >> files-to-upload.txt
+
+          fi
+          docker rm tmp-${{ matrix.lang }}
+
+      - name: Set files to upload
+        id: files
+        run: |
+          echo "files-to-upload=$(cat dist/files-to-upload.txt)" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.files.outputs.files-to-upload }}
+        
+        
