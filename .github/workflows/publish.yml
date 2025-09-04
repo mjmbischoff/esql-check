@@ -53,12 +53,13 @@ jobs:
             GIT_REF=${{ env.ES_RELEASE_TAG }}
           tags: ${{ steps.tags.outputs.tags }}
 
-      - name: Generate attestation
-        uses: actions/attest-build-provenance@v3
-        with:
-          subject-name: index.docker.io/my-docker-hub-namespace/my-docker-hub-repository
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
+      # # using docker hub which doesn't need / support this
+      # - name: Generate attestation
+      #   uses: actions/attest-build-provenance@v3
+      #   with:
+      #     subject-name: index.docker.io/my-docker-hub-namespace/my-docker-hub-repository
+      #     subject-digest: ${{ steps.push.outputs.digest }}
+      #     push-to-registry: true
 
       - name: Prepare artifacts directory
         run: mkdir -p dist
