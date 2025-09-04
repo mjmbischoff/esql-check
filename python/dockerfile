@@ -1,0 +1,78 @@
+FROM eclipse-temurin:24-alpine AS builder
+
+WORKDIR /workspace
+
+# Install dependencies
+RUN apk add --no-cache git wget bash python3
+
+# Download ANTLR
+ENV ANTLR_VERSION=4.13.1
+ENV ANTLR_JAR=antlr-${ANTLR_VERSION}-complete.jar
+RUN wget https://www.antlr.org/download/${ANTLR_JAR} -O /usr/local/lib/${ANTLR_JAR} && \
+    ln -s /usr/local/lib/${ANTLR_JAR} /usr/local/lib/antlr.jar
+
+# Sparse checkout of Elasticsearch ANTLR grammar only
+ARG GIT_REF=main
+RUN git init esql && \
+    cd esql && \
+    git remote add origin https://github.com/elastic/elasticsearch.git && \
+    git config core.sparseCheckout true && \
+    echo "x-pack/plugin/esql/src/main/antlr/*" >> .git/info/sparse-checkout && \
+    git fetch --depth 1 origin ${GIT_REF} && \
+    git checkout FETCH_HEAD
+
+# Prepare lexer and parser staging directories
+RUN mkdir -p /workspace/python-generated-grammar /workspace/lexer-g4-files /workspace/parser-g4-files && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/EsqlBaseLexer.g4 /workspace/lexer-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/lexer/*.g4 /workspace/lexer-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/EsqlBaseParser.g4 /workspace/parser-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/parser/*.g4 /workspace/parser-g4-files/
+
+# Preprocess lexer and parser grammars to strip @header and semantic predicates, as the java code doesn't work with python
+RUN python3 - <<'EOF'
+import pathlib, re
+
+G4_DIRS = ["/workspace/lexer-g4-files", "/workspace/parser-g4-files"]
+
+header_re = re.compile(r'@header\s*\{.*?\}', re.DOTALL)
+predicate_re = re.compile(r'\{this\.[^}]+\}\?')
+superclass_re = re.compile(r'superClass\s*=\s*[^;]+;')
+
+for g4_dir in G4_DIRS:
+    g4_path = pathlib.Path(g4_dir)
+    for f in g4_path.glob("*.g4"):
+        txt = f.read_text()
+        txt = header_re.sub('', txt)
+        txt = predicate_re.sub('', txt)
+        txt = superclass_re.sub('', txt)
+        f.write_text(txt)
+EOF
+
+# Generate Python sources with ANTLR
+RUN cd /workspace/lexer-g4-files && \
+    java -Xmx500M -cp /usr/local/lib/antlr.jar \
+         org.antlr.v4.Tool -Dlanguage=Python3 \
+         -o /workspace/python-generated-grammar \
+         -lib . EsqlBaseLexer.g4
+RUN cd /workspace/parser-g4-files && \
+    java -Xmx500M -cp /usr/local/lib/antlr.jar \
+         org.antlr.v4.Tool -Dlanguage=Python3 \
+         -o /workspace/python-generated-grammar \
+         -lib . EsqlBaseParser.g4
+
+# ====================    
+FROM python:3.11-alpine AS runtime
+
+WORKDIR /app
+
+# Copy generated ANTLR code
+COPY --from=builder /workspace/python-generated-grammar ./grammar
+RUN ls /app/*
+
+# Copy validation script
+COPY esql-check.py .
+
+# Install ANTLR Python runtime
+RUN pip install --no-cache-dir antlr4-python3-runtime==4.13.1
+
+ENTRYPOINT ["python3", "esql-check.py"]

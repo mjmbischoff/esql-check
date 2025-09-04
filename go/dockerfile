@@ -1,0 +1,121 @@
+FROM eclipse-temurin:24-alpine AS builder
+
+WORKDIR /workspace
+
+# Install dependencies
+RUN apk add --no-cache git wget bash python3 go
+
+# Download ANTLR
+ENV ANTLR_VERSION=4.13.1
+ENV ANTLR_JAR=antlr-${ANTLR_VERSION}-complete.jar
+RUN wget https://www.antlr.org/download/${ANTLR_JAR} -O /usr/local/lib/${ANTLR_JAR} && \
+    ln -s /usr/local/lib/${ANTLR_JAR} /usr/local/lib/antlr.jar
+
+# Sparse checkout of Elasticsearch ANTLR grammar only
+ARG GIT_REF=main
+RUN git init esql && \
+    cd esql && \
+    git remote add origin https://github.com/elastic/elasticsearch.git && \
+    git config core.sparseCheckout true && \
+    echo "x-pack/plugin/esql/src/main/antlr/*" >> .git/info/sparse-checkout && \
+    git fetch --depth 1 origin ${GIT_REF} && \
+    git checkout FETCH_HEAD
+
+# Prepare lexer and parser staging directories
+RUN mkdir -p /workspace/app /workspace/lexer-g4-files /workspace/parser-g4-files && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/EsqlBaseLexer.g4 /workspace/lexer-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/lexer/*.g4 /workspace/lexer-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/EsqlBaseParser.g4 /workspace/parser-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/parser/*.g4 /workspace/parser-g4-files/
+
+# Preprocess lexer and parser grammars to strip @header and semantic predicates, as the java code doesn't work with python
+RUN python3 - <<'EOF'
+import pathlib, re
+
+G4_DIRS = ["/workspace/lexer-g4-files", "/workspace/parser-g4-files"]
+
+header_re = re.compile(r'@header\s*\{.*?\}', re.DOTALL)
+predicate_re = re.compile(r'\{this\.[^}]+\}\?')
+superclass_re = re.compile(r'superClass\s*=\s*[^;]+;')
+
+for g4_dir in G4_DIRS:
+    g4_path = pathlib.Path(g4_dir)
+    for f in g4_path.glob("*.g4"):
+        txt = f.read_text()
+        txt = header_re.sub('', txt)
+        txt = predicate_re.sub('', txt)
+        txt = superclass_re.sub('', txt)
+        f.write_text(txt)
+EOF
+
+# Generate Go sources with ANTLR
+RUN cd /workspace/lexer-g4-files && \
+    java -Xmx500M -cp /usr/local/lib/antlr.jar \
+         org.antlr.v4.Tool -Dlanguage=Go \
+         -o /workspace/app/parsing \
+         -lib . \
+         -package parsing \
+         EsqlBaseLexer.g4
+RUN cd /workspace/parser-g4-files && \
+    java -Xmx500M -cp /usr/local/lib/antlr.jar \
+         org.antlr.v4.Tool -Dlanguage=Go \
+         -o /workspace/app/parsing \
+         -lib . \
+         -package parsing \
+         EsqlBaseParser.g4
+
+# Build Go validation tool
+WORKDIR /workspace/app
+RUN go mod init esqlvalidator && \
+    go get github.com/antlr4-go/antlr/v4
+
+# Simple validator main.go
+RUN cat <<'EOF' > main.go
+package main
+
+import (
+    "fmt"
+    "os"
+    "github.com/antlr4-go/antlr/v4"
+    "esqlvalidator/parsing"
+)
+
+type BailErrorListener struct {
+    *antlr.DefaultErrorListener
+}
+
+func (l *BailErrorListener) SyntaxError(recognizer antlr.Recognizer, offendingSymbol interface{},
+    line, column int, msg string, e antlr.RecognitionException) {
+    fmt.Fprintf(os.Stderr, "Syntax error at line %d:%d - %s\n", line, column, msg)
+    os.Exit(1)
+}
+
+func main() {
+    if len(os.Args) != 2 {
+        fmt.Println("Usage: esql-check '<query>'")
+        os.Exit(1)
+    }
+
+    input := antlr.NewInputStream(os.Args[1])
+    lexer := parsing.NewEsqlBaseLexer(input)
+    stream := antlr.NewCommonTokenStream(lexer, 0)
+    parser := parsing.NewEsqlBaseParser(stream)
+
+    parser.RemoveErrorListeners()
+    parser.AddErrorListener(&BailErrorListener{})
+
+    // Entry point: 'singleStatement' is often the top rule in SQL-like grammars
+    parser.SingleStatement()
+    fmt.Println("Input is valid ✅")
+}
+EOF
+
+RUN go build -o /workspace/esql-check main.go
+    
+#========================
+FROM alpine:3.20
+
+WORKDIR /app
+COPY --from=builder /workspace/esql-check /usr/local/bin/esql-check
+
+ENTRYPOINT ["esql-check"]

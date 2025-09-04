@@ -1,0 +1,86 @@
+FROM ghcr.io/graalvm/native-image-community:24-muslib AS builder
+
+WORKDIR /workspace
+
+# Install system dependencies
+RUN microdnf install -y wget git unzip python3 curl
+
+# Download GraalVM Community 24
+ENV GRAALVM_VERSION=24.0.2
+ENV GRAALVM_DIR=/opt/graalvm
+RUN curl -L https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAALVM_VERSION}/graalvm-community-jdk-${GRAALVM_VERSION}_linux-x64_bin.tar.gz \
+        | tar -xz -C /opt \
+        && mv /opt/graalvm-community-openjdk-$GRAALVM_VERSION+11.1 $GRAALVM_DIR
+
+ENV PATH=$GRAALVM_DIR/bin:$PATH
+
+# Download ANTLR
+ENV ANTLR_VERSION=4.13.1
+ENV ANTLR_JAR=antlr-${ANTLR_VERSION}-complete.jar
+RUN wget https://www.antlr.org/download/${ANTLR_JAR} -O /usr/local/lib/${ANTLR_JAR} && \
+    ln -s /usr/local/lib/${ANTLR_JAR} /usr/local/lib/antlr.jar
+
+# Sparse checkout of Elasticsearch ANTLR grammar only
+ARG GIT_REF=main
+RUN git init esql && \
+    cd esql && \
+    git remote add origin https://github.com/elastic/elasticsearch.git && \
+    git config core.sparseCheckout true && \
+    echo "x-pack/plugin/esql/src/main/antlr/*" >> .git/info/sparse-checkout && \
+    git fetch --depth 1 origin ${GIT_REF} && \
+    git checkout FETCH_HEAD
+
+# Prepare lexer and parser staging directories
+RUN mkdir -p /workspace/python-generated-grammar /workspace/lexer-g4-files /workspace/parser-g4-files && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/EsqlBaseLexer.g4 /workspace/lexer-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/lexer/*.g4 /workspace/lexer-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/EsqlBaseParser.g4 /workspace/parser-g4-files/ && \
+    cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/parser/*.g4 /workspace/parser-g4-files/
+
+# Preprocess lexer and parser grammars to strip @header and semantic predicates, as the java code doesn't work with python
+RUN python3 - <<'EOF'
+import pathlib, re
+
+G4_DIRS = ["/workspace/lexer-g4-files", "/workspace/parser-g4-files"]
+
+header_re = re.compile(r'@header\s*\{.*?\}', re.DOTALL)
+predicate_re = re.compile(r'\{this\.[^}]+\}\?')
+superclass_re = re.compile(r'superClass\s*=\s*[^;]+;')
+
+for g4_dir in G4_DIRS:
+    g4_path = pathlib.Path(g4_dir)
+    for f in g4_path.glob("*.g4"):
+        txt = f.read_text()
+        txt = header_re.sub('', txt)
+        txt = predicate_re.sub('', txt)
+        txt = superclass_re.sub('', txt)
+        f.write_text(txt)
+EOF
+# Generate Java sources with ANTLR
+RUN cd /workspace/lexer-g4-files && \
+    java -Xmx1G -cp /usr/local/lib/antlr.jar org.antlr.v4.Tool -Dlanguage=Java -o /workspace/java-generated -lib . -package dev.bischoff.michael.elastic.esql.validator EsqlBaseLexer.g4
+RUN cd /workspace/parser-g4-files && \
+    java -Xmx1G -cp /usr/local/lib/antlr.jar org.antlr.v4.Tool -Dlanguage=Java -o /workspace/java-generated -lib . -package dev.bischoff.michael.elastic.esql.validator EsqlBaseParser.g4
+
+RUN mkdir -p /workspace/dev/bischoff/michael/elastic/esql/validator && \
+    mv /workspace/java-generated/* /workspace/dev/bischoff/michael/elastic/esql/validator/
+# Copy Java source and ANTLR generated classes
+COPY ESQLValidator.java ./dev/bischoff/michael/elastic/esql/validator/
+
+# Compile Java classes
+RUN javac -cp /usr/local/lib/antlr.jar dev/bischoff/michael/elastic/esql/validator/*.java
+
+# Build native image
+RUN native-image \
+  --no-fallback \
+  --static \
+  --libc=musl \
+  -H:Class=dev.bischoff.michael.elastic.esql.validator.ESQLValidator \
+  -cp "/workspace:/usr/local/lib/antlr.jar" \
+  -H:Name=esql-check
+
+#========================
+
+FROM scratch
+COPY --from=builder /workspace/esql-check /esql-check
+ENTRYPOINT ["/esql-check"]
