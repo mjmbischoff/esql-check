@@ -1,13 +1,37 @@
 # ESQL-check
 
-This project contains docker images based on different languages that build a parser from the [ES:QL grammar](https://github.com/elastic/elasticsearch/tree/main/x-pack/plugin/esql/src/main/antlr) written in [ANTLR](https://www.antlr.org/)
+This project contains docker images based on different languages that build a parser from the [ES:QL](https://www.elastic.co/docs/reference/query-languages/esql) [grammar](https://github.com/elastic/elasticsearch/tree/main/x-pack/plugin/esql/src/main/antlr) written in [ANTLR](https://www.antlr.org/)
 
-## purpose
+## Usage
 
-These generate a parser to validate your ES:QL grammar in different languages. This can be useful for plugins, pipelines, etc. where there's a need to perform some validation outside of Elasticsearch.
+### Executable (linux)
+
+```$ wget -qO esql-check https://github.com/mjmbischoff/esql-check/releases/download/9.1.2/esql-check-java
+$ ./esql-check "from foo"
+Input is valid :white_check_mark:
+$ ./esql-check "select *"
+Input is invalid :x:
+Syntax error at line 1:0 - mismatched input 'select' expecting {'explain', 'row', 'from', 'ts', 'show'}.
+```
+
+### Docker image
+
+```
+$ docker run mjmbischoff/esql-check:9.1.2 "FROM foo UNKNOWN"
+Input is invalid :x:
+Syntax error at line 1:9 - extraneous input 'UNKNOWN' expecting <EOF>.
+```
+
+## Purpose
+This project contains directories matching different languages. These contain docker images which generate a parser for 
+[ES:QL](https://www.elastic.co/docs/reference/query-languages/esql). Finally, it creates an image with the entrypoint 
+pointing at a script or executable that allows you to validate your [ES:QL](https://www.elastic.co/docs/reference/query-languages/esql) 
+grammar. This can be useful for plugins, pipelines, etc. where there's a need to perform some validation outside of 
+Elasticsearch. These dockerfiles also provide a live howto on how to get an ESQL parser in 
+your project.
 
 
-## dockerfile steps
+### dockerfile steps
 
 1. Build stage - compile parser from upstream
     1. get an image together for building
