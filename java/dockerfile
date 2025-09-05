@@ -83,10 +83,6 @@ RUN mvn install:install-file -Dfile=/usr/local/lib/antlr.jar -DgroupId=org.antlr
 COPY pom.xml /workspace/mvn/pom.xml
 COPY src /workspace/mvn/src
 
-# Move ANTLR generated sources into Maven layout
-RUN mkdir -p /workspace/mvn/target/generated-sources/antlr4/java/dev/bischoff/michael/elastic/esql/parser/ && \
-    mv /workspace/java-generated/* /workspace/mvn/target/generated-sources/antlr4/java/dev/bischoff/michael/elastic/esql/parser/
-
 # Build and copy dependencies
 RUN mvn -f /workspace/mvn/pom.xml clean package -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency
 
@@ -96,6 +92,7 @@ RUN native-image \
   --static \
   --libc=musl \
   -H:Class=dev.bischoff.michael.elastic.esql.validator.ESQLChecker \
+  -H:+ReportUnsupportedElementsAtRuntime \
   -cp "mvn/target/classes:mvn/target/dependency/*:/usr/local/lib/antlr.jar" \
   -H:Name=esql-check
 
