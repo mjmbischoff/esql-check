@@ -4,11 +4,12 @@ Project that documents creating an [ES:QL](https://www.elastic.co/docs/reference
 
 ## ESQL checker
 
-### Install and usage
+### Install
 
 #### Executable (linux)
 
-```$ wget -qO esql-check https://github.com/mjmbischoff/esql-check/releases/download/9.1.2/esql-check-java
+```
+$ wget -qO esql-check https://github.com/mjmbischoff/esql-check/releases/download/9.1.2/esql-check-java
 $ ./esql-check "from foo"
 Input is valid :white_check_mark:
 $ ./esql-check "select *"
@@ -24,6 +25,23 @@ $ docker run mjmbischoff/esql-check:9.1.2 "FROM foo UNKNOWN"
 Input is invalid :x:
 Syntax error at line 1:9 - extraneous input 'UNKNOWN' expecting <EOF>.
 ```
+
+### usage
+
+| Flags / Args                                             | Input Source           | Interpretation / Behavior                                                              |
+|----------------------------------------------------------|------------------------|----------------------------------------------------------------------------------------|
+| No flags, no args                                        | stdin                  | Read raw ESQL from stdin                                                               | 
+| No flags, 1 positional arg                               | Positional argument    | Treat as raw ESQL query string                                                         |
+| `--files` alone                                          | Files matching glob(s) | Process each file as raw ESQL                                                          |
+| `--files` + positional arg                               | Ambiguous              | Error: cannot mix `--files` with a positional argument (also with `--json` or `--toml`)|
+| `--json <field>` or `--toml <field>` + 0 positional args | stdin                  | Read JSON/TOML content from stdin; extract the specified field and validate as ESQL    | 
+| `--json <field>` or `--toml <field>` + 1 positional arg  | Positional argument    | Treat argument as JSON/TOML content; extract the specified field and validate as ESQL  | 
+| `--json <field>` or `--toml <field>` + `--files`         | Files matching glob(s) | Process each file as JSON/TOML; extract the specified field from each and validate     | 
+
+
+
+
+
 ## Published artifacts
 if you just want to use the parser in your projects use:
 
@@ -98,4 +116,5 @@ This project builds [ES:QL](https://www.elastic.co/docs/reference/query-language
 if you need the jar of the parser to do a local install, you can use the following command:
 ```
 docker buildx build --build-arg GIT_REF=main --target export --output type=tar,dest=./java.tar ./java && mkdir -p java/target && tar -C java/target --strip-components=1 -xf java.tar export/generated-antlr-esql-parser.jar export/generated-antlr-esql-parser-sources.jar && rm java.tar
+mvn install:install-file -Dfile=.java/target/generated-antlr-esql-parser.jar -DgroupId=dev.bischoff.michael.elastic.esql -DartifactId=parser -Dversion=main -Dpackaging=jar
 ```

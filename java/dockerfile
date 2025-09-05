@@ -95,7 +95,7 @@ RUN native-image \
   --no-fallback \
   --static \
   --libc=musl \
-  -H:Class=dev.bischoff.michael.elastic.esql.validator.ESQLValidator \
+  -H:Class=dev.bischoff.michael.elastic.esql.validator.ESQLChecker \
   -cp "mvn/target/classes:mvn/target/dependency/*:/usr/local/lib/antlr.jar" \
   -H:Name=esql-check
 
