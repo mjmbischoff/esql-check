@@ -3,7 +3,7 @@ FROM ghcr.io/graalvm/native-image-community:24-muslib AS builder
 WORKDIR /workspace
 
 # Install system dependencies
-RUN microdnf install -y wget git unzip python3 curl
+RUN microdnf install -y wget git unzip python3 curl maven
 
 # Download GraalVM Community 24
 ENV GRAALVM_VERSION=24.0.2
@@ -11,11 +11,10 @@ ENV GRAALVM_DIR=/opt/graalvm
 RUN curl -L https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAALVM_VERSION}/graalvm-community-jdk-${GRAALVM_VERSION}_linux-x64_bin.tar.gz \
         | tar -xz -C /opt \
         && mv /opt/graalvm-community-openjdk-$GRAALVM_VERSION+11.1 $GRAALVM_DIR
-
 ENV PATH=$GRAALVM_DIR/bin:$PATH
 
 # Download ANTLR
-ENV ANTLR_VERSION=4.13.1
+ENV ANTLR_VERSION=4.13.2
 ENV ANTLR_JAR=antlr-${ANTLR_VERSION}-complete.jar
 RUN wget https://www.antlr.org/download/${ANTLR_JAR} -O /usr/local/lib/${ANTLR_JAR} && \
     ln -s /usr/local/lib/${ANTLR_JAR} /usr/local/lib/antlr.jar
@@ -37,7 +36,7 @@ RUN mkdir -p /workspace/python-generated-grammar /workspace/lexer-g4-files /work
     cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/EsqlBaseParser.g4 /workspace/parser-g4-files/ && \
     cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/parser/*.g4 /workspace/parser-g4-files/
 
-# Preprocess lexer and parser grammars to strip @header and semantic predicates, as the java code doesn't work with python
+# Preprocess lexer and parser grammars to strip @header and semantic predicates, as the java code doesn't work with python, go
 RUN python3 - <<'EOF'
 import pathlib, re
 
@@ -56,19 +55,40 @@ for g4_dir in G4_DIRS:
         txt = superclass_re.sub('', txt)
         f.write_text(txt)
 EOF
+
 # Generate Java sources with ANTLR
 RUN cd /workspace/lexer-g4-files && \
-    java -Xmx1G -cp /usr/local/lib/antlr.jar org.antlr.v4.Tool -Dlanguage=Java -o /workspace/java-generated -lib . -package dev.bischoff.michael.elastic.esql.validator EsqlBaseLexer.g4
+    java -Xmx1G -cp /usr/local/lib/antlr.jar org.antlr.v4.Tool -Dlanguage=Java -o /workspace/java-generated -lib . -package dev.bischoff.michael.elastic.esql.parser EsqlBaseLexer.g4
 RUN cd /workspace/parser-g4-files && \
-    java -Xmx1G -cp /usr/local/lib/antlr.jar org.antlr.v4.Tool -Dlanguage=Java -o /workspace/java-generated -lib . -package dev.bischoff.michael.elastic.esql.validator EsqlBaseParser.g4
+    java -Xmx1G -cp /usr/local/lib/antlr.jar org.antlr.v4.Tool -Dlanguage=Java -o /workspace/java-generated -lib . -package dev.bischoff.michael.elastic.esql.parser EsqlBaseParser.g4
 
-RUN mkdir -p /workspace/dev/bischoff/michael/elastic/esql/validator && \
-    mv /workspace/java-generated/* /workspace/dev/bischoff/michael/elastic/esql/validator/
-# Copy Java source and ANTLR generated classes
-COPY ESQLValidator.java ./dev/bischoff/michael/elastic/esql/validator/
+# 1️ Compile generated ANTLR sources
+RUN mkdir -p /workspace/java-compiled && \
+    find /workspace/java-generated -name "*.java" > /workspace/java-sources.txt && \
+    javac -cp /usr/local/lib/antlr.jar \
+          -d /workspace/java-compiled \
+          /workspace/java-generated/*.java \
+          @/workspace/java-sources.txt
 
-# Compile Java classes
-RUN javac -cp /usr/local/lib/antlr.jar dev/bischoff/michael/elastic/esql/validator/*.java
+# Package compiled classes into a JAR
+RUN cd /workspace/java-compiled && jar cf /workspace/jars/generated-antlr-esql-parser.jar .
+
+# Package source files into a JAR
+RUN cd /workspace/java-generated && jar cf /workspace/jars/generated-antlr-esql-parser-sources.jar .
+
+RUN mvn install:install-file -Dfile=/workspace/jars/generated-antlr-esql-parser.jar -DgroupId=dev.bischoff.michael.elastic.esql -DartifactId=parser -Dversion=main -Dpackaging=jar
+RUN mvn install:install-file -Dfile=/usr/local/lib/antlr.jar -DgroupId=org.antlr -DartifactId=antlr4 -Dversion=${ANTLR_VERSION} -Dpackaging=jar
+
+# Copy Maven project files
+COPY pom.xml /workspace/mvn/pom.xml
+COPY src /workspace/mvn/src
+
+# Move ANTLR generated sources into Maven layout
+RUN mkdir -p /workspace/mvn/target/generated-sources/antlr4/java/dev/bischoff/michael/elastic/esql/parser/ && \
+    mv /workspace/java-generated/* /workspace/mvn/target/generated-sources/antlr4/java/dev/bischoff/michael/elastic/esql/parser/
+
+# Build and copy dependencies
+RUN mvn -f /workspace/mvn/pom.xml clean package -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency
 
 # Build native image
 RUN native-image \
@@ -76,15 +96,15 @@ RUN native-image \
   --static \
   --libc=musl \
   -H:Class=dev.bischoff.michael.elastic.esql.validator.ESQLValidator \
-  -cp "/workspace:/usr/local/lib/antlr.jar" \
+  -cp "mvn/target/classes:mvn/target/dependency/*:/usr/local/lib/antlr.jar" \
   -H:Name=esql-check
 
 # =========================
 # Export stage
 FROM alpine:3.18 AS export
 WORKDIR /export
-RUN mkdir -p /export/java-grammar
-COPY --from=builder /workspace/java-generated /export/java-grammar
+RUN mkdir -p /export
+COPY --from=builder /workspace/jars /export/
 COPY --from=builder /workspace/esql-check /export/esql-check
 
 #========================

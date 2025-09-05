@@ -58,37 +58,44 @@ jobs:
 
       - name: Extract artifacts
         run: |
-          mkdir -p dist
+          mkdir -p build
 
           if [ "${{ matrix.lang }}" = "java" ]; then
             docker buildx build \
-            --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
-            --target export \
-            --output type=local,dest=./build/java,include=/export/esql-check,include=/export/java-grammar \
-            ./java
+              --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
+              --target export \
+              --output type=tar,dest=./build/java.tar \
+              ./java
 
-            cp ./build/java/export/esql-check ./dist/esql-check-java
-            cp -r ./build/java/export/java-grammar ./dist/java-grammar
-            cd dist && zip -r parser-java.zip java-grammar && cd ..
+            tar -C ./dist --strip-components=1 -xf ./build/java.tar export/
+            mv ./dist/esql-check ./dist/esql-check-java
 
           elif [ "${{ matrix.lang }}" = "python" ]; then
             docker buildx build \
               --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
               --target export \
-              --output type=local,dest=./build/python ./python
+              --output type=tar,dest=./build/python.tar \
+              ./python
 
-            cp -r ./build/python/export/python-grammar ./dist/python-grammar
-            cd dist && zip -r parser-python.zip python-grammar && cd ..
+            tar -C ./dist --strip-components=1 -xf ./build/python.tar export/
+            cd dist && \
+              zip -r parser-python.zip python-grammar && \
+              rm -rf python-grammar && \
+              cd ..
 
           elif [ "${{ matrix.lang }}" = "go" ]; then
             docker buildx build \
               --build-arg GIT_REF=${{ env.ES_RELEASE_TAG }} \
               --target export \
-              --output type=local,dest=./build/go ./go
+              --output type=tar,dest=./build/go.tar \
+              ./go
 
-            cp ./build/go/export/esql-check ./dist/esql-check-go
-            cp -r ./build/go/export/go-grammar ./dist/go-grammar
-            cd dist && zip -r parser-go.zip go-grammar && cd ..
+            tar -C ./dist --strip-components=1 -xf ./build/go.tar export/
+            mv ./dist/esql-check ./dist/esql-check-go
+            cd dist && \
+              zip -r parser-go.zip go-grammar && \
+              rm -rf go-grammar && \
+              cd ..
           fi
 
       - name: Upload artifacts to GitHub release
