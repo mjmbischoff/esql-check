@@ -10,7 +10,30 @@ env:
   ES_RELEASE_TAG: v${{ github.event.release.tag_name }}
 
 jobs:
+  check-latest:
+    name: Check if release is latest
+    runs-on: ubuntu-latest
+    outputs:
+      is_latest: ${{ steps.check.outputs.is_latest }}
+    steps:
+      - name: Determine if this is the latest release
+        id: check
+        run: |
+          releases=$(curl -s -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${GITHUB_REPOSITORY}/releases)
+
+          latest_tag=$(echo "$releases" | jq -r '[.[] | select(.draft==false) | select(.prerelease==false)][0].tag_name')
+
+          echo "Latest release tag: $latest_tag"
+          echo "Current release tag: ${{ github.event.release.tag_name }}"
+
+          if [[ "${{ github.event.release.tag_name }}" == "$latest_tag" ]]; then
+            echo "is_latest=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_latest=false" >> $GITHUB_OUTPUT
+
   build-and-publish:
+    needs: check-latest
     name: Build Docker Images & Release Artifacts (${{ matrix.lang }})
     runs-on: ubuntu-latest
     strategy:
@@ -37,8 +60,8 @@ jobs:
         id: tags
         run: |
           TAGS="${{ env.IMAGE_NAME }}:${{ matrix.lang }}-${{ github.event.release.tag_name }}"
-          if [ "${{ matrix.lang }}" = "java" ]; then
-            TAGS="$TAGS,${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }},${{ env.IMAGE_NAME }}:latest"
+          if [ "${{ matrix.lang }}" = "java" ] && [ "${{ needs.check-latest.outputs.is_latest }}" = "true" ]; then
+            TAGS="$TAGS,${{ env.IMAGE_NAME }}:latest"
           fi
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
