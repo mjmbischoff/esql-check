@@ -31,6 +31,7 @@ jobs:
             echo "is_latest=true" >> $GITHUB_OUTPUT
           else
             echo "is_latest=false" >> $GITHUB_OUTPUT
+          fi
 
   build-and-publish:
     needs: check-latest
