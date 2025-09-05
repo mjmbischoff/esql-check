@@ -94,6 +94,7 @@ public class ESQLChecker implements Callable<Integer> {
             for(String filePattern : files) {
                 for(Path path : expandGlob(filePattern)) {
                     try (InputStream in = Files.newInputStream(path)) {
+                        System.out.println("Checking file '"+path+"'...");
                         String esql = inputFormat.extract(in);
                         if(failsCheck(esql)) {
                             System.err.println("for file '"+path+"'");
@@ -114,7 +115,7 @@ public class ESQLChecker implements Callable<Integer> {
     }
 
     public List<Path> expandGlob(String pattern) throws IOException {
-        Path baseDir = Paths.get(".");
+        Path baseDir = findExistingParent(pattern);
         PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + pattern);
 
         List<Path> matches = new ArrayList<>();
@@ -123,6 +124,20 @@ public class ESQLChecker implements Callable<Integer> {
                     .forEach(matches::add);
         }
         return matches;
+    }
+
+    // Determine the base directory to start walking
+    private Path findExistingParent(String pattern) {
+        Path path = Paths.get(pattern);
+        Path parent = path.getParent();
+        while (parent != null && !Files.exists(parent)) {
+            parent = parent.getParent();
+        }
+        if (parent == null) {
+            // If no existing parent (highly unusual), start from root or "."
+            return path.isAbsolute() ? path.getRoot() : Paths.get(".");
+        }
+        return parent;
     }
 
     public boolean failsCheck(String text) {

@@ -10,13 +10,13 @@ Project that documents creating an [ES:QL](https://www.elastic.co/docs/reference
 
 ```
 $ wget -qO esql-check https://github.com/mjmbischoff/esql-check/releases/download/9.1.2/esql-check-java
+$ chmod +x esql-check
 $ ./esql-check "from foo"
 Input is valid :white_check_mark:
 $ ./esql-check "select *"
 Input is invalid :x:
 Syntax error at line 1:0 - mismatched input 'select' expecting {'explain', 'row', 'from', 'ts', 'show'}.
 ```
-
 
 #### Docker image
 
@@ -39,8 +39,22 @@ Syntax error at line 1:9 - extraneous input 'UNKNOWN' expecting <EOF>.
 | `--json <field>` or `--toml <field>` + `--files`         | Files matching glob(s) | Process each file as JSON/TOML; extract the specified field from each and validate     | 
 
 
-
-
+Example: checking detection rules repo toml's
+```
+$ wget https://github.com/elastic/detection-rules/archive/refs/heads/main.zip
+$ unzip main.zip
+$ wget -qO esql-check https://github.com/mjmbischoff/esql-check/releases/download/9.1.3/esql-check-java
+$ chmod +x esql-check
+$ ./esql-check --toml rule.query --files "./detection-rules-main/rules/**/*.toml"
+```
+This will fail:
+```
+Checking file '/home/michael/test-esql/detection-rules-main/rules/cross-platform/credential_access_cookies_chromium_browsers_debugging.toml'...
+Input is invalid ❌
+Syntax error at line 1:0 - mismatched input 'process' expecting {'explain', 'row', 'from', 'ts', 'show'}.
+for file '/home/michael/test-esql/detection-rules-main/rules/cross-platform/credential_access_cookies_chromium_browsers_debugging.toml'
+```
+Because not all rules are esql based.
 
 ## Published artifacts
 if you just want to use the parser in your projects use:
