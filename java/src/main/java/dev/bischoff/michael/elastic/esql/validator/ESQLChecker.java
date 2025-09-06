@@ -7,15 +7,15 @@ import org.antlr.v4.runtime.*;
 import dev.bischoff.michael.elastic.esql.parser.*;
 import org.tomlj.Toml;
 import org.tomlj.TomlParseResult;
+import org.tomlj.internal.TomlLexer;
 import picocli.CommandLine;
 import picocli.CommandLine.ArgGroup;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -134,6 +134,10 @@ public class ESQLChecker implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        if(inputFormat.tomlField !=null || inputFormat.elasticDetectionRule) {
+            tickleTomlToSurpressANTLRMismatch();
+        }
+
         if (!files.isEmpty()) {
             // Ambiguous combination check
             if (input != null) {
@@ -141,13 +145,19 @@ public class ESQLChecker implements Callable<Integer> {
                 return 2;
             }
             // process files flags
+            Path dir = null;
             for(String filePattern : files) {
                 for(Path path : expandGlob(filePattern)) {
                     try (InputStream in = Files.newInputStream(path)) {
-                        System.out.print("Checking file '"+path+"'... ");
+                        var newDir = path.subpath(0,path.getNameCount()-1);
+                        if(!Objects.equals(dir, newDir)) {
+                            dir = newDir;
+                            System.out.println("Checking dir '"+dir+"':");
+                        }
+                        System.out.print("\tFile '"+path.getFileName()+"'... ");
                         var result = inputFormat.extract(in);
                         if(!result.shouldSkip) {
-                            System.out.println("Skipping validation.");
+                            System.out.println("skipping.");
                             continue;
                         }
                         if(failsCheck(result.esql)) {
@@ -170,6 +180,20 @@ public class ESQLChecker implements Callable<Integer> {
             }
         }
         return 0;
+    }
+
+    private void tickleTomlToSurpressANTLRMismatch() {
+        PrintStream err = System.err; //NOPMD ok not to close; is save/restore pattern
+        var tempOut = new ByteArrayOutputStream();
+        try (var tempErr = new PrintStream(tempOut)){
+            // Redirect System.err to suppress ANTLR warning about runtime/compilation version mismatch.
+            // See: org.antlr.v4.runtime.RuntimeMetadata
+            System.setErr(tempErr);
+
+            Toml.parse("[test]");
+        } finally {
+            System.setErr(err);
+        }
     }
 
     public List<Path> expandGlob(String pattern) throws IOException {
@@ -220,7 +244,7 @@ public class ESQLChecker implements Callable<Integer> {
         }
     }
 
-    private static EsqlBaseParser getEsqlParser(CharStream input) {
+    protected EsqlBaseParser getEsqlParser(CharStream input) {
         EsqlBaseLexer lexer = new EsqlBaseLexer(input);
         EsqlBaseParser parser = new EsqlBaseParser(new CommonTokenStream(lexer));
 
