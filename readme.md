@@ -28,15 +28,15 @@ Syntax error at line 1:9 - extraneous input 'UNKNOWN' expecting <EOF>.
 
 ### usage
 
-| Flags / Args                                             | Input Source           | Interpretation / Behavior                                                              |
-|----------------------------------------------------------|------------------------|----------------------------------------------------------------------------------------|
-| No flags, no args                                        | stdin                  | Read raw ESQL from stdin                                                               | 
-| No flags, 1 positional arg                               | Positional argument    | Treat as raw ESQL query string                                                         |
-| `--files` alone                                          | Files matching glob(s) | Process each file as raw ESQL                                                          |
-| `--files` + positional arg                               | Ambiguous              | Error: cannot mix `--files` with a positional argument (also with `--json` or `--toml`)|
-| `--json <field>` or `--toml <field>` + 0 positional args | stdin                  | Read JSON/TOML content from stdin; extract the specified field and validate as ESQL    | 
-| `--json <field>` or `--toml <field>` + 1 positional arg  | Positional argument    | Treat argument as JSON/TOML content; extract the specified field and validate as ESQL  | 
-| `--json <field>` or `--toml <field>` + `--files`         | Files matching glob(s) | Process each file as JSON/TOML; extract the specified field from each and validate     | 
+| Flags / Args                    | Input Source           | Interpretation / Behavior                                                                                 |
+|---------------------------------|------------------------|-----------------------------------------------------------------------------------------------------------|
+| No flags, no args               | stdin                  | Read raw ESQL from stdin                                                                                  | 
+| No flags, 1 positional arg      | Positional argument    | Treat as raw ESQL query string                                                                            |
+| `--files` alone                 | Files matching glob(s) | Process each file as raw ESQL                                                                             |
+| `--files` + 1 positional arg    | Ambiguous              | Error: cannot mix `--files` with a positional argument (also with `--json` or `--toml`)                   |
+| format flag + no args           | stdin                  | Read JSON/TOML content from stdin; extract the specified field and validate as ESQL                       | 
+| format flag + 1 positional arg  | Positional argument    | Treat argument as JSON/TOML/Elastic Detection rule content; extract and validate as ESQL                  | 
+| format flag + `--files`         | Files matching glob(s) | Process each file as JSON/TOML/Elastic Detection rule; extract the specified field from each and validate | 
 
 
 Example: checking detection rules repo toml's
