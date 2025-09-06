@@ -127,3 +127,34 @@ jobs:
         with:
           files: dist/*
 
+      - name: Publish JARs to Maven Central
+        if: matrix.lang == 'java'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          server-id: ossrh
+          server-username: MAVEN_CENTRAL_USERNAME
+          server-password: MAVEN_CENTRAL_PASSWORD
+  
+      - name: Deploy JARs
+        if: matrix.lang == 'java'
+        run: |
+          mvn deploy:deploy-file \
+            -DgroupId=dev.bischoff.michael.elastic.esql \
+            -DartifactId=parser \
+            -Dversion=${{ github.event.release.tag_name }} \
+            -Dpackaging=jar \
+            -Dfile=dist/generated-antlr-esql-parser.jar \
+            -DrepositoryId=ossrh \
+            -Durl=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
+
+          mvn deploy:deploy-file \
+            -DgroupId=dev.bischoff.michael.elastic.esql \
+            -DartifactId=parser \
+            -Dversion=${{ github.event.release.tag_name }} \
+            -Dclassifier=sources \
+            -Dpackaging=jar \
+            -Dfile=dist/generated-antlr-esql-parser-sources.jar \
+            -DrepositoryId=ossrh \
+            -Durl=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
