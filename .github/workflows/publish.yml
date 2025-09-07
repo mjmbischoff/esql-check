@@ -144,14 +144,14 @@ jobs:
         run: |
           mvn deploy:deploy-file \
             -Dfile=dist/generated-antlr-esql-parser.jar \
-            -DpomFile=.github/workflows/dist-pom.xml \
+            -DpomFile=$GITHUB_WORKSPACE/.github/workflows/dist-pom.xml \
             -Dversion=${{ github.event.release.tag_name }} \
             -DrepositoryId=central \
             -Durl=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
       
           mvn deploy:deploy-file \
             -Dfile=dist/generated-antlr-esql-parser-sources.jar \
-            -DpomFile=.github/workflows/dist-pom.xml \
+            -DpomFile=$GITHUB_WORKSPACE/.github/workflows/dist-pom.xml \
             -Dversion=${{ github.event.release.tag_name }} \
             -Dclassifier=sources \
             -DrepositoryId=central \
@@ -159,7 +159,7 @@ jobs:
             
           mvn deploy:deploy-file \
             -Dfile=dist/generated-antlr-esql-parser-javadoc.jar \
-            -DpomFile=.github/workflows/dist-pom.xml \
+            -DpomFile=$GITHUB_WORKSPACE/.github/workflows/dist-pom.xml \
             -Dversion=${{ github.event.release.tag_name }} \
             -Dclassifier=javadoc \
             -DrepositoryId=central \
