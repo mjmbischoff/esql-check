@@ -138,15 +138,6 @@ jobs:
           server-password: MAVEN_CENTRAL_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
-  
-      - name: Generate Javadoc JAR from sources JAR
-        if: matrix.lang == 'java'
-        run: |
-          tmp=$(mktemp -d)
-          jar xf dist/esql-check-java-sources.jar -C $tmp
-          javadoc -d $tmp/javadoc $(find $tmp -name "*.java")
-          jar cf dist/esql-check-java-javadoc.jar -C $tmp/javadoc .
-          rm -rf $tmp
 
       - name: Deploy Artifacts to Maven Central
         if: matrix.lang == 'java'

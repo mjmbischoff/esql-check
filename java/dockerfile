@@ -50,7 +50,7 @@ for g4_dir in G4_DIRS:
     g4_path = pathlib.Path(g4_dir)
     for f in g4_path.glob("*.g4"):
         txt = f.read_text()
-        txt = header_re.sub('', txt)
+#        txt = header_re.sub('', txt)
         txt = predicate_re.sub('', txt)
         txt = superclass_re.sub('', txt)
         f.write_text(txt)
@@ -62,19 +62,28 @@ RUN cd /workspace/lexer-g4-files && \
 RUN cd /workspace/parser-g4-files && \
     java -Xmx1G -cp /usr/local/lib/antlr.jar org.antlr.v4.Tool -Dlanguage=Java -o /workspace/java-generated -lib . -package dev.bischoff.michael.elastic.esql.parser EsqlBaseParser.g4
 
-# 1️ Compile generated ANTLR sources
+RUN find /workspace/java-generated -name "*.java" > /workspace/java-sources.txt
+
+# Compile generated ANTLR sources
 RUN mkdir -p /workspace/java-compiled && \
-    find /workspace/java-generated -name "*.java" > /workspace/java-sources.txt && \
     javac -cp /usr/local/lib/antlr.jar \
           -d /workspace/java-compiled \
-          /workspace/java-generated/*.java \
           @/workspace/java-sources.txt
+
+# Generate Javadoc for parser classes
+RUN mkdir -p /workspace/javadoc && \
+    javadoc -cp /usr/local/lib/antlr.jar \
+            -d /workspace/javadoc \
+            @/workspace/java-sources.txt
 
 # Package compiled classes into a JAR
 RUN cd /workspace/java-compiled && jar cf /workspace/jars/generated-antlr-esql-parser.jar .
 
 # Package source files into a JAR
 RUN cd /workspace/java-generated && jar cf /workspace/jars/generated-antlr-esql-parser-sources.jar .
+
+# Package Javadoc into a JAR
+RUN cd /workspace/javadoc && jar cf /workspace/jars/generated-antlr-esql-parser-javadoc.jar .
 
 RUN mvn install:install-file -Dfile=/workspace/jars/generated-antlr-esql-parser.jar -DgroupId=dev.bischoff.michael.elastic.esql -DartifactId=parser -Dversion=main -Dpackaging=jar
 RUN mvn install:install-file -Dfile=/usr/local/lib/antlr.jar -DgroupId=org.antlr -DartifactId=antlr4 -Dversion=${ANTLR_VERSION} -Dpackaging=jar
