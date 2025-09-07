@@ -143,14 +143,14 @@ jobs:
         if: matrix.lang == 'java'
         run: |
           mvn deploy:deploy-file \
-            -Dfile=dist/esql-check-java.jar \
+            -Dfile=dist/generated-antlr-esql-parser.jar \
             -DpomFile=.github/workflows/dist-pom.xml \
             -Dversion=${{ github.event.release.tag_name }} \
             -DrepositoryId=central \
             -Durl=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
       
           mvn deploy:deploy-file \
-            -Dfile=dist/esql-check-java-sources.jar \
+            -Dfile=dist/generated-antlr-esql-parser-sources.jar \
             -DpomFile=.github/workflows/dist-pom.xml \
             -Dversion=${{ github.event.release.tag_name }} \
             -Dclassifier=sources \
@@ -158,7 +158,7 @@ jobs:
             -Durl=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
             
           mvn deploy:deploy-file \
-            -Dfile=dist/esql-check-java-javadoc.jar \
+            -Dfile=dist/generated-antlr-esql-parser-javadoc.jar \
             -DpomFile=.github/workflows/dist-pom.xml \
             -Dversion=${{ github.event.release.tag_name }} \
             -Dclassifier=javadoc \
