@@ -33,11 +33,12 @@ Syntax error at line 1:9 - extraneous input 'UNKNOWN' expecting <EOF>.
 | No flags, no args               | stdin                  | Read raw ESQL from stdin                                                                                  | 
 | No flags, 1 positional arg      | Positional argument    | Treat as raw ESQL query string                                                                            |
 | `--files` alone                 | Files matching glob(s) | Process each file as raw ESQL                                                                             |
-| `--files` + 1 positional arg    | Ambiguous              | Error: cannot mix `--files` with a positional argument (also with `--json` or `--toml`)                   |
+| `--files` + 1 positional arg    | Ambiguous              | Error: cannot mix `--files` with a positional argument (also with `--elastic-dr` `--json` or `--toml`)                   |
 | format flag + no args           | stdin                  | Read JSON/TOML content from stdin; extract the specified field and validate as ESQL                       | 
 | format flag + 1 positional arg  | Positional argument    | Treat argument as JSON/TOML/Elastic Detection rule content; extract and validate as ESQL                  | 
 | format flag + `--files`         | Files matching glob(s) | Process each file as JSON/TOML/Elastic Detection rule; extract the specified field from each and validate | 
 
+#### TOML files --toml
 
 Example: checking detection rules repo toml's
 ```
@@ -55,6 +56,21 @@ Syntax error at line 1:0 - mismatched input 'process' expecting {'explain', 'row
 for file '/home/michael/test-esql/detection-rules-main/rules/cross-platform/credential_access_cookies_chromium_browsers_debugging.toml'
 ```
 Because not all rules are esql based.
+
+#### Elastic detection rules --elastic-dr
+
+Changing the command used in the TOML section to use the `--elastic-dr` flag, enables skipping detection rules that aren't esql based. If we run the following:
+```
+$./esql-check --elastic-dr --files "detection-rules-main/rules/**/*.toml"
+```
+We see it skipping files, while checking others. Currently(sep 2025) we get the following:
+```
+Checking file 'detection-rules-main/rules/integrations/okta/credential_access_okta_authentication_for_multiple_users_with_the_same_device_token_hash.toml'... line 4:24 token recognition error at: '"user\.'
+Input is invalid ❌
+Syntax error at line 4:31 - no viable alternative at input '(event.action rlike authentication'.
+Check for file 'detection-rules-main/rules/integrations/okta/credential_access_okta_authentication_for_multiple_users_with_the_same_device_token_hash.toml' failed
+```
+inspecting the file it looks like an actual problem with and escaped? dot. This is indeed not valid esql.
 
 ## Published artifacts
 if you just want to use the parser in your projects use:
