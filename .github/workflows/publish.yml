@@ -180,4 +180,4 @@ jobs:
             --verbose \
             -H "Authorization: Bearer $TOKEN" \
             --form bundle=@central-bundle.zip \
-            https://central.sonatype.com/api/v1/publisher/upload?name=esql-parser-${VERSION}&publishingType=AUTOMATIC
+            https://central.sonatype.com/api/v1/publisher/upload?name=esql-parser&publishingType=AUTOMATIC
