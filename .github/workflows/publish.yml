@@ -127,27 +127,48 @@ jobs:
         with:
           files: dist/*
 
+      - name: Import GPG key
+        if: matrix.lang == 'java'
+        run: |
+
+
       - name: Prepare Maven Central upload bundle
         if: matrix.lang == 'java'
         run: |
           VERSION=${{ github.event.release.tag_name }}
-          BASE_DIR="dev/bischoff/michael/elastic/esql/parser/${VERSION}"
-          mkdir -p upload/$BASE_DIR
+          BUNDLE_DIR="$GITHUB_WORKSPACE/upload/dev/bischoff/michael/elastic/esql/parser/$VERSION"
+          DIST_DIR="$GITHUB_WORKSPACE/dist"
 
-          cp dist/generated-antlr-esql-parser.jar \
-             upload/$BASE_DIR/parser-${VERSION}.jar
-          cp dist/generated-antlr-esql-parser-sources.jar \
-             upload/$BASE_DIR/parser-${VERSION}-sources.jar
-          cp dist/generated-antlr-esql-parser-javadoc.jar \
-             upload/$BASE_DIR/parser-${VERSION}-javadoc.jar
+          mkdir -p "$BUNDLE_DIR"
 
-          # Update POM with release version
+          cp "$DIST_DIR/generated-antlr-esql-parser.jar"          "$BUNDLE_DIR/parser-${VERSION}.jar"
+          cp "$DIST_DIR/generated-antlr-esql-parser-sources.jar"  "$BUNDLE_DIR/parser-${VERSION}-sources.jar"
+          cp "$DIST_DIR/generated-antlr-esql-parser-javadoc.jar"  "$BUNDLE_DIR/parser-${VERSION}-javadoc.jar"
+
           sed "s|<version>0.0.0</version>|<version>${VERSION}</version>|" \
-             .github/workflows/dist-pom.xml \
-             > upload/$BASE_DIR/parser-${VERSION}.pom
+          "$GITHUB_WORKSPACE/.github/workflows/dist-pom.xml"    > "$BUNDLE_DIR/parser-${VERSION}.pom"
 
-          cd upload && zip -r ../maven-upload.zip .
-          cd ..
+          # Generate SHA1 and MD5 checksums for all files
+          for file in "$BUNDLE_DIR"/*; do
+              sha1sum "$file" | awk '{print $1}' > "$file.sha1"
+              md5sum "$file" | awk '{print $1}' > "$file.md5"
+          done
+
+          # Import GPG key
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          gpg --list-secret-keys
+
+          # Sign artifacts with GPG
+          for file in "$BUNDLE_DIR"/*.{jar,pom}; do
+              gpg --batch --yes \
+                  --pinentry-mode loopback \
+                  --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+                  --detach-sign --armor "$file"
+          done
+
+          # Package everything into central-bundle.zip
+          cd "$GITHUB_WORKSPACE/upload"
+          zip -r "$GITHUB_WORKSPACE/central-bundle.zip" .
 
       - name: Upload to Maven Central (via new API)
         if: matrix.lang == 'java'
@@ -158,5 +179,5 @@ jobs:
           curl -v \
             --verbose \
             -H "Authorization: Bearer $TOKEN" \
-            --form bundle=@maven-upload.zip \
+            --form bundle=@central-bundle.zip \
             https://central.sonatype.com/api/v1/publisher/upload
