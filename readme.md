@@ -70,7 +70,7 @@ Input is invalid ❌
 Syntax error at line 4:31 - no viable alternative at input '(event.action rlike authentication'.
 Check for file 'detection-rules-main/rules/integrations/okta/credential_access_okta_authentication_for_multiple_users_with_the_same_device_token_hash.toml' failed
 ```
-inspecting the file it looks like an actual problem with and escaped? dot. This is indeed not valid esql.
+inspecting the file it looks like an actual problem with an unescaped `\`. This is _indeed_ not valid esql.
 
 ## Published artifacts
 if you just want to use the parser in your projects use:
