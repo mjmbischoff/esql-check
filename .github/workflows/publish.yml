@@ -127,34 +127,49 @@ jobs:
         with:
           files: dist/*
 
-      - name: Publish JARs to Maven Central
+      - name: Setup java and maven
         if: matrix.lang == 'java'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-          server-id: ossrh
+          server-id: central
           server-username: MAVEN_CENTRAL_USERNAME
           server-password: MAVEN_CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
   
-      - name: Deploy JARs
+      - name: Generate Javadoc JAR from sources JAR
+        if: matrix.lang == 'java'
+        run: |
+          tmp=$(mktemp -d)
+          jar xf dist/esql-check-java-sources.jar -C $tmp
+          javadoc -d $tmp/javadoc $(find $tmp -name "*.java")
+          jar cf dist/esql-check-java-javadoc.jar -C $tmp/javadoc .
+          rm -rf $tmp
+
+      - name: Deploy Artifacts to Maven Central
         if: matrix.lang == 'java'
         run: |
           mvn deploy:deploy-file \
-            -DgroupId=dev.bischoff.michael.elastic.esql \
-            -DartifactId=parser \
+            -Dfile=dist/esql-check-java.jar \
+            -DpomFile=.github/workflows/dist-pom.xml \
             -Dversion=${{ github.event.release.tag_name }} \
-            -Dpackaging=jar \
-            -Dfile=dist/generated-antlr-esql-parser.jar \
-            -DrepositoryId=ossrh \
+            -DrepositoryId=central \
             -Durl=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
-
+      
           mvn deploy:deploy-file \
-            -DgroupId=dev.bischoff.michael.elastic.esql \
-            -DartifactId=parser \
+            -Dfile=dist/esql-check-java-sources.jar \
+            -DpomFile=.github/workflows/dist-pom.xml \
             -Dversion=${{ github.event.release.tag_name }} \
             -Dclassifier=sources \
-            -Dpackaging=jar \
-            -Dfile=dist/generated-antlr-esql-parser-sources.jar \
-            -DrepositoryId=ossrh \
+            -DrepositoryId=central \
             -Durl=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/
+            
+          mvn deploy:deploy-file \
+            -Dfile=dist/esql-check-java-javadoc.jar \
+            -DpomFile=.github/workflows/dist-pom.xml \
+            -Dversion=${{ github.event.release.tag_name }} \
+            -Dclassifier=javadoc \
+            -DrepositoryId=central \
+            -Durl=https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/ 
