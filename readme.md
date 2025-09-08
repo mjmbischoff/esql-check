@@ -99,9 +99,20 @@ TODO: Distribute as package
 
 ### Golang
 
-Currently supplying a zip with the generated classes
+Published under https://github.com/mjmbischoff/esql-go-parser
+```
+import (
+    ...
+    "github.com/antlr4-go/antlr/v4"
+    "github.com/mjmbischoff/esql-go-parser/parsing"
+)
+```
+Use explicit versions, eg:
+```
+go get github.com/mjmbischoff/esql-go-parser@v9.1.3
+```
 
-TODO: publishng as a module
+This project is currently supplying a zip with the generated classes that is used by that repo. It's public go check it out.
 
 ## Project 
 
