@@ -42,7 +42,7 @@ for g4_dir in G4_DIRS:
     g4_path = pathlib.Path(g4_dir)
     for f in g4_path.glob("*.g4"):
         txt = f.read_text()
-        txt = header_re.sub('', txt)
+#        txt = header_re.sub('', txt) //golang supports /* */ style comments
         txt = predicate_re.sub('', txt)
         txt = superclass_re.sub('', txt)
         f.write_text(txt)
