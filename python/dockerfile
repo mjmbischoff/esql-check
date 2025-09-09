@@ -28,21 +28,41 @@ RUN mkdir -p /workspace/python-generated-grammar /workspace/lexer-g4-files /work
     cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/EsqlBaseParser.g4 /workspace/parser-g4-files/ && \
     cp /workspace/esql/x-pack/plugin/esql/src/main/antlr/parser/*.g4 /workspace/parser-g4-files/
 
-# Preprocess lexer and parser grammars to strip @header and semantic predicates, as the java code doesn't work with python
+# Preprocess lexer and parser grammars:
+#  - transform @header from /* */ to Python-style comments
+#  - strip semantic predicates and superClass (java-only)
 RUN python3 - <<'EOF'
 import pathlib, re
 
 G4_DIRS = ["/workspace/lexer-g4-files", "/workspace/parser-g4-files"]
 
-header_re = re.compile(r'@header\s*\{.*?\}', re.DOTALL)
+header_re = re.compile(r'@header\s*\{(.*?)\}', re.DOTALL)
 predicate_re = re.compile(r'\{this\.[^}]+\}\?')
 superclass_re = re.compile(r'superClass\s*=\s*[^;]+;')
+
+def convert_header(match: re.Match) -> str:
+    content = match.group(1)
+    lines = content.splitlines()
+    out_lines = []
+    for line in lines:
+        # remove block comment markers
+        line = line.strip()
+        if line.startswith("/*"):
+            line = line[2:]
+        if line.endswith("*/"):
+            line = line[:-2]
+        if line.startswith("*"):
+            line = line[1:]
+        out_lines.append("# " + line.strip() if line.strip() else "#")
+    return "@header {\n" + "\n".join(out_lines) + "\n}"
 
 for g4_dir in G4_DIRS:
     g4_path = pathlib.Path(g4_dir)
     for f in g4_path.glob("*.g4"):
         txt = f.read_text()
-        txt = header_re.sub('', txt)
+        # Replace @header with Python-style comment version
+        txt = header_re.sub(convert_header, txt)
+        # Remove Java-only stuff
         txt = predicate_re.sub('', txt)
         txt = superclass_re.sub('', txt)
         f.write_text(txt)
