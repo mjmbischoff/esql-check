@@ -1,6 +1,9 @@
 # ESQL-check
 
-Project that documents creating an [ES:QL](https://www.elastic.co/docs/reference/query-languages) parser outside of Elasticsearch using dockerfiles. In addition it provides a lightweight executable to validate ESQL and provides artifacts that can be used as dependicies in other projects.
+Project that; 
+1. Documents creating an [ES:QL](https://www.elastic.co/docs/reference/query-languages) parser outside of Elasticsearch using dockerfiles. 
+2. Provides a lightweight executable to validate ESQL Syntax. 
+3. Provides artifacts that expose the parser which can be used as dependicies in other projects.
 
 ## ESQL checker
 
