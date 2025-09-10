@@ -178,10 +178,7 @@ jobs:
             --form bundle=@central-bundle.zip \
             https://central.sonatype.com/api/v1/publisher/upload?name=esql-parser&publishingType=AUTOMATIC
 
-      - name: Publish to PyPI
-        if: matrix.lang == 'python'
+      - name: Publish to PyPI via Trusted Publishing
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: dist
+          print-hash: true          
