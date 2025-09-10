@@ -90,8 +90,8 @@ COPY bundle/pyproject.toml /workspace/bundle/
 COPY bundle/README.md /workspace/bundle/
 
 # Update version in pyproject.toml
-RUN if echo "${GIT_REF}" | grep -Eq '^[0-9]+(\.[0-9]+)*$'; then \
-      VERSION="${GIT_REF}"; \
+RUN if [[ "${GIT_REF}" =~ ^v[0-9]+(\.[0-9]+)*$ ]]; then \
+      VERSION="${GIT_REF#v}"; \
     else \
       VERSION="0.0.0.dev+${GIT_REF}"; \
     fi && \
