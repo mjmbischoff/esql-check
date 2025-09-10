@@ -89,12 +89,11 @@ COPY bundle/NOTICE.txt /workspace/bundle/
 COPY bundle/pyproject.toml /workspace/bundle/
 COPY bundle/README.md /workspace/bundle/
 
-# Update version in pyproject.toml
-RUN if [[ "${GIT_REF}" =~ ^v[0-9]+(\.[0-9]+)*$ ]]; then \
-      VERSION="${GIT_REF#v}"; \
-    else \
-      VERSION="0.0.0.dev+${GIT_REF}"; \
-    fi && \
+# Update version in pyproject.toml (POSIX sh compatible)
+RUN case "$GIT_REF" in \
+      v[0-9]*.[0-9]*.[0-9]*) VERSION="${GIT_REF#v}" ;; \
+      *)                     VERSION="0.0.0.dev0+${GIT_REF}" ;; \
+    esac && \
     sed -i "s/^version = .*/version = \"${VERSION}\"/" /workspace/bundle/pyproject.toml
 
 # Build PyPI artifacts (sdist + wheel) in isolated venv
