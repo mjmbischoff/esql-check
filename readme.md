@@ -80,7 +80,7 @@ if you just want to use the parser in your projects use:
 
 ### Java
 
-! not pushing to maven central yet ! TODO
+[https://central.sonatype.com/artifact/dev.bischoff.michael.elastic.esql/parser](https://central.sonatype.com/artifact/dev.bischoff.michael.elastic.esql/parser)
 ```
         <dependency>
             <groupId>org.antlr</groupId>
@@ -96,9 +96,10 @@ if you just want to use the parser in your projects use:
 
 ### Python
 
-Currently supplying a zip with the generated classes
-
-TODO: Distribute as package
+[https://pypi.org/project/esql-parser/](https://pypi.org/project/esql-parser/)
+```
+pip install esql-parser
+```
 
 ### Golang
 
