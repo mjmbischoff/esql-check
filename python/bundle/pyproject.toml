@@ -7,14 +7,15 @@ name = "esql-parser"
 version = "0.0.0"
 description = "Python parser for Elasticsearch ESQL"
 readme = "README.md"
-license = { text = "Elastic License 2.0", file = "LICENSE" }
+requires-python = ">=3.8"
+license = "Elastic-2.0"
+
 authors = [
     { name = "Michael Bischoff", email = "michael@bischoff.dev" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: Other/Proprietary License",
-    "Operating System :: OS Independent",
+    "Operating System :: OS Independent"
 ]
 dependencies = [
     "antlr4-python3-runtime==4.13.1"
