@@ -112,7 +112,7 @@ Use explicit versions, eg:
 go get github.com/mjmbischoff/esql-go-parser@v9.1.3
 ```
 
-This project is currently supplying a zip with the generated classes that is used by that repo. It's public go check it out.
+This project is currently supplying a zip with the generated classes that is used by that repo. It's public, so if you want to know how it's constructed, go check it out.
 
 ## Project 
 
