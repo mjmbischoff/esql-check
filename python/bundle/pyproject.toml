@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "esql-check"
+name = "esql-parser"
 version = "0.0.0"
 description = "Python parser for Elasticsearch ESQL"
 readme = "README.md"

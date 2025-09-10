@@ -102,10 +102,6 @@ jobs:
               ./python
 
             tar -C ./dist --strip-components=1 -xf ./build/python.tar export/
-            cd dist && \
-              zip -r parser-python.zip python-grammar && \
-              rm -rf python-grammar && \
-              cd ..
 
           elif [ "${{ matrix.lang }}" = "go" ]; then
             docker buildx build \
@@ -181,3 +177,11 @@ jobs:
             -H "Authorization: Bearer $TOKEN" \
             --form bundle=@central-bundle.zip \
             https://central.sonatype.com/api/v1/publisher/upload?name=esql-parser&publishingType=AUTOMATIC
+
+      - name: Publish to PyPI
+        if: matrix.lang == 'python'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: dist
