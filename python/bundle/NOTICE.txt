@@ -1,0 +1,17 @@
+esql-parser
+
+Provides a Parser for the Elasticsearch Query Language (ESQL)
+
+The ESQL grammar files were derived from the
+Elasticsearch project (https://github.com/elastic/elasticsearch)
+and have been adapted for use with the Python ANTLR runtime.
+
+Licensed under the Elastic License 2.0 
+https://www.elastic.co/licensing/elastic-license
+This is because we rely on the g4 anltr files under the 
+elastic/elasticsearch repo, under the x-pack directory.
+Should this not apply or anything not automatically covered 
+under that license, then it is Dual-licensed under Apache 
+License 2.0, https://www.apache.org/licenses/LICENSE-2.0 
+and Elastic License 2.0 
+https://www.elastic.co/licensing/elastic-license

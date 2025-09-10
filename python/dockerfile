@@ -3,7 +3,7 @@ FROM eclipse-temurin:24-alpine AS builder
 WORKDIR /workspace
 
 # Install dependencies
-RUN apk add --no-cache git wget bash python3
+RUN apk add --no-cache git wget bash python3 py3-pip
 
 # Download ANTLR
 ENV ANTLR_VERSION=4.13.1
@@ -80,16 +80,35 @@ RUN cd /workspace/parser-g4-files && \
          -o /workspace/python-generated-grammar \
          -lib . EsqlBaseParser.g4
 
-# Prepare clean export directory
-RUN mkdir -p /export && \
-    cp -r /workspace/python-generated-grammar /export/python-grammar
+# Prepare clean export directory for pip packaging
+RUN mkdir -p /workspace/bundle/esql_parser && \
+    cp /workspace/python-generated-grammar/*.py /workspace/bundle/esql_parser
+
+COPY bundle/LICENSE /workspace/bundle/ 
+COPY bundle/NOTICE.txt /workspace/bundle/ 
+COPY bundle/pyproject.toml /workspace/bundle/
+COPY bundle/README.md /workspace/bundle/
+
+# Update version in pyproject.toml
+RUN if echo "${GIT_REF}" | grep -Eq '^[0-9]+(\.[0-9]+)*$'; then \
+      VERSION="${GIT_REF}"; \
+    else \
+      VERSION="0.0.0.dev+${GIT_REF}"; \
+    fi && \
+    sed -i "s/^version = .*/version = \"${VERSION}\"/" /workspace/bundle/pyproject.toml
+
+# Build PyPI artifacts (sdist + wheel) in isolated venv
+RUN python3 -m venv /venv && \
+    /venv/bin/pip install --no-cache-dir build && \
+    cd /workspace/bundle && \
+    /venv/bin/python -m build --sdist --wheel --outdir /export
 
 #========================
 # Export artifacts stage
 FROM eclipse-temurin:24-alpine AS export
 WORKDIR /export
-RUN mkdir -p /export/python-grammar
-COPY --from=builder /workspace/python-generated-grammar /export/python-grammar
+COPY --from=builder /export/esql_parser-*.tar.gz .
+COPY --from=builder /export/esql_parser-*-py3-none-any.whl .
 
 #========================
 # Final image
