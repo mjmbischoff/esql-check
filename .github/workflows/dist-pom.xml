@@ -6,7 +6,7 @@
 
   <groupId>dev.bischoff.michael.elastic.esql</groupId>
   <artifactId>parser</artifactId>
-  <version>0.0.0</version> <!-- to be overridden by CLI -->
+  <version>0.0.0</version>
   <packaging>jar</packaging>
 
   <name>ESQL Parser</name>
