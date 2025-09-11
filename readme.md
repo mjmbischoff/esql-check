@@ -98,7 +98,7 @@ if you just want to use the parser in your projects use:
 
 [https://pypi.org/project/esql-parser/](https://pypi.org/project/esql-parser/)
 ```
-pip install esql-parser
+pip install esql-parser==${ES_VERSION}
 ```
 
 ### Golang
